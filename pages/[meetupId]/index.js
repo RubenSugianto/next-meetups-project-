@@ -1,32 +1,36 @@
+import { MongoClient, ObjectId } from "mongodb";
 import MeetupDetail from "../../components/meetups/MeetupDetail";
 
-function MeetupDetails() {
+function MeetupDetails(props) {
     return (
         <MeetupDetail 
-        title= 'Cristiano Ronaldo Fan Meetup'
-        image= 'https://akcdn.detik.net.id/community/media/visual/2024/11/06/cristiano-ronaldo-1.jpeg?w=600&q=90'
-        address= 'Juventus Stadium, Turin, Italy'
-        description= 'Join fellow fans of Cristiano Ronaldo for a fun evening celebrating his legendary football career with games, trivia, and memorabilia.'
+            title= {props.meetupData.title}
+            image= {props.meetupData.image}
+            address= {props.meetupData.address}
+            description= {props.meetupData.description}
         />
     );
 }
 
 
 export async function getStaticPaths() {
+    const client = await MongoClient.connect(
+        'mongodb+srv://ruben:ruben@cluster0.x7jxsfh.mongodb.net/meetups?retryWrites=true&w=majority&appName=Cluster0'
+    );
+        
+    const db = client.db();
+        
+    const meetupsCollection = db.collection('meetups');
+
+    const meetups = await meetupsCollection.find({}, { _id: 1}).toArray();
+
+    client.close();
+
     return {
         fallback: false,
-        paths: [
-            {
-                params: {
-                    meetupId: 'm1',
-                },
-            },
-            {
-                params: {
-                    meetupId: 'm2',
-                },
-            },
-        ],
+        paths: meetups.map((meetup) => ({
+            params: { meetupId: meetup._id.toString() },
+        })),
     };
 }
 
@@ -35,16 +39,26 @@ export async function getStaticProps(context) {
     // fetch data for a single meetup
     const meetupId = context.params.meetupId;
 
-    console.log(meetupId);
+    const client = await MongoClient.connect('mongodb+srv://ruben:ruben@cluster0.x7jxsfh.mongodb.net/meetups?retryWrites=true&w=majority&appName=Cluster0');
+        
+    const db = client.db();
+        
+    const meetupsCollection = db.collection('meetups');
+
+    const selectedMeetup = await meetupsCollection.findOne({_id: new ObjectId(meetupId)});
+
+    console.log(selectedMeetup);
+
+    client.close();
 
     return {
         props: {
             meetupData: {
-                title: 'Cristiano Ronaldo Fan Meetup',
-                id: meetupId,
-                image: 'https://akcdn.detik.net.id/community/media/visual/2024/11/06/cristiano-ronaldo-1.jpeg?w=600&q=90',
-                address: 'Juventus Stadium, Turin, Italy',
-                description: 'Join fellow fans of Cristiano Ronaldo for a fun evening celebrating his legendary football career with games, trivia, and memorabilia.'
+                id: selectedMeetup._id.toString(),
+                title: selectedMeetup.title,
+                address: selectedMeetup.address,
+                image: selectedMeetup.image,
+                description: selectedMeetup.description,
             }
         }
     }
